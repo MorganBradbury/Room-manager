@@ -7,12 +7,13 @@ import {
   VoiceChannel,
   Guild,
   VoiceState,
+  Options,
 } from "discord.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const CATEGORY_NAME = "Voice rooms";
+const CATEGORY_NAME = "🔊 Voice rooms";
 const CREATE_CHANNEL_NAME = "➕┃Create room";
 const ROOM_PREFIX = "🔊┃Room #";
 
@@ -22,7 +23,10 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.GuildMember],
+  partials: [Partials.GuildMember, Partials.Channel],
+  makeCache: Options.cacheWithLimits({
+    VoiceStateManager: 50, // Limit the number of voice states cached (e.g., 50 voice states max)
+  }),
 });
 
 client.once(Events.ClientReady, async () => {
@@ -41,7 +45,6 @@ client.on(
   Events.VoiceStateUpdate,
   async (oldState: VoiceState, newState: VoiceState) => {
     const guild = newState.guild;
-
     const category = guild.channels.cache.find(
       (c) => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
     );
@@ -75,15 +78,9 @@ client.on(
         name: `${ROOM_PREFIX}${roomNumber}`,
         type: ChannelType.GuildVoice,
         parent: category.id,
-        permissionOverwrites: createChannel.permissionOverwrites.cache.map(
-          (perm) => ({
-            id: perm.id,
-            allow: perm.allow,
-            deny: perm.deny,
-          })
-        ),
       });
 
+      // Move users from the "create channel" to the new room
       for (const [, member] of createChannel.members) {
         await member.voice.setChannel(newRoom).catch(console.error);
       }
@@ -111,12 +108,14 @@ async function setupCategory(guild: Guild): Promise<void> {
     const children = guild.channels.cache.filter(
       (c) => c.parentId === existingCategory.id
     );
+    // Delete all children in the existing category (rooms + create channel)
     for (const [, child] of children) {
       await child.delete().catch(console.error);
     }
     await existingCategory.delete().catch(console.error);
   }
 
+  // Create the category and the "create channel"
   const newCategory = await guild.channels.create({
     name: CATEGORY_NAME,
     type: ChannelType.GuildCategory,
