@@ -1,4 +1,4 @@
-import { Client, Events, Guild } from "discord.js";
+import { Client, Events, Guild, VoiceState } from "discord.js";
 import { setupCategory } from "../utils/setupCategory";
 import { handleVoiceStateUpdate } from "./voiceStateUpdate";
 

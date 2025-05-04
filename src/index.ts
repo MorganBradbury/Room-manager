@@ -1,5 +1,8 @@
-import { Client, GatewayIntentBits, Partials } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Options } from "discord.js";
+import dotenv from "dotenv";
 import { registerEvents } from "./events";
+
+dotenv.config();
 
 const client = new Client({
   intents: [
@@ -8,16 +11,11 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
   ],
   partials: [Partials.GuildMember, Partials.Channel],
+  makeCache: Options.cacheWithLimits({
+    VoiceStateManager: 50,
+  }),
 });
 
-(async () => {
-  try {
-    await client.login(process.env.DISCORD_TOKEN!);
-    console.log("✅ Room manager logged in successfully!");
-    registerEvents(client);
-  } catch (error) {
-    console.error("Error logging in to Discord:", error);
-  }
-})();
+registerEvents(client);
 
-export default client;
+client.login(process.env.DISCORD_TOKEN);
