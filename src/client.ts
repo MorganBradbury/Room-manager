@@ -10,7 +10,7 @@ const client = new Client({
 
 (async () => {
   try {
-    await client.login(process.env.DISCORD_BOT_TOKEN!);
+    await client.login(process.env.DISCORD_TOKEN!);
     console.log("✅ Room manager connected");
   } catch (error) {
     console.error("Error logging in to Discord:", error);
