@@ -1,2 +1,2 @@
-import "./events/voiceStateUpdate";
 import "./events/setupCategory";
+import "./events/voiceStateUpdate";
