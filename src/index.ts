@@ -16,6 +16,4 @@ const client = new Client({
   }),
 });
 
-registerEvents(client);
-
 client.login(process.env.DISCORD_TOKEN);
