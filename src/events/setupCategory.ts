@@ -1,7 +1,7 @@
 import { ChannelType, CategoryChannel, Guild, Events } from "discord.js";
 import client from "../client";
 
-const CATEGORY_NAME = "Voice rooms";
+const CATEGORY_NAME = "🔊 Voice rooms";
 const CREATE_CHANNEL_NAME = "➕┃Create room";
 
 async function setupCategory(guild: Guild): Promise<void> {
