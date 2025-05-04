@@ -7,13 +7,13 @@ import {
   VoiceChannel,
   Guild,
   VoiceState,
-  Options,
+  CategoryChannel,
 } from "discord.js";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const CATEGORY_NAME = "🔊 Voice rooms";
+const CATEGORY_NAME = "Voice rooms";
 const CREATE_CHANNEL_NAME = "➕┃Create room";
 const ROOM_PREFIX = "🔊┃Room #";
 
@@ -24,9 +24,6 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
   ],
   partials: [Partials.GuildMember, Partials.Channel],
-  makeCache: Options.cacheWithLimits({
-    VoiceStateManager: 50, // Limit the number of voice states cached (e.g., 50 voice states max)
-  }),
 });
 
 client.once(Events.ClientReady, async () => {
@@ -47,7 +44,8 @@ client.on(
     const guild = newState.guild;
     const category = guild.channels.cache.find(
       (c) => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
-    );
+    ) as CategoryChannel | undefined; // Type guard to ensure it's a CategoryChannel
+
     if (!category) return;
 
     const createChannel = guild.channels.cache.find(
@@ -56,6 +54,7 @@ client.on(
         c.name === CREATE_CHANNEL_NAME &&
         c.type === ChannelType.GuildVoice
     ) as VoiceChannel | undefined;
+
     if (!createChannel) return;
 
     // Handle user joining ➕┃Create room
@@ -102,9 +101,11 @@ client.on(
 async function setupCategory(guild: Guild): Promise<void> {
   const existingCategory = guild.channels.cache.find(
     (c) => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
-  );
+  ) as CategoryChannel | undefined; // Type guard to ensure it's a CategoryChannel
 
   if (existingCategory) {
+    const existingPosition = existingCategory.rawPosition; // Capture the category position
+
     const children = guild.channels.cache.filter(
       (c) => c.parentId === existingCategory.id
     );
@@ -113,19 +114,33 @@ async function setupCategory(guild: Guild): Promise<void> {
       await child.delete().catch(console.error);
     }
     await existingCategory.delete().catch(console.error);
+
+    // Recreate the category at the same position
+    const newCategory = await guild.channels.create({
+      name: CATEGORY_NAME,
+      type: ChannelType.GuildCategory,
+      position: existingPosition, // Ensure the category is recreated at the same position
+    });
+
+    // Create the "create channel" within the same category
+    await guild.channels.create({
+      name: CREATE_CHANNEL_NAME,
+      type: ChannelType.GuildVoice,
+      parent: newCategory.id,
+    });
+  } else {
+    // If the category doesn't exist, just create it at the bottom
+    const newCategory = await guild.channels.create({
+      name: CATEGORY_NAME,
+      type: ChannelType.GuildCategory,
+    });
+
+    await guild.channels.create({
+      name: CREATE_CHANNEL_NAME,
+      type: ChannelType.GuildVoice,
+      parent: newCategory.id,
+    });
   }
-
-  // Create the category and the "create channel"
-  const newCategory = await guild.channels.create({
-    name: CATEGORY_NAME,
-    type: ChannelType.GuildCategory,
-  });
-
-  await guild.channels.create({
-    name: CREATE_CHANNEL_NAME,
-    type: ChannelType.GuildVoice,
-    parent: newCategory.id,
-  });
 }
 
 client.login(process.env.DISCORD_TOKEN);
