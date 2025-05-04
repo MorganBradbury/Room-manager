@@ -1,12 +1,12 @@
 import {
   Client,
   GatewayIntentBits,
+  Partials,
   Events,
   ChannelType,
   VoiceChannel,
   Guild,
   VoiceState,
-  CategoryChannel,
   Options,
 } from "discord.js";
 import dotenv from "dotenv";
@@ -18,32 +18,15 @@ const CREATE_CHANNEL_NAME = "➕┃Create room";
 const ROOM_PREFIX = "🔊┃Room #";
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates],
-  partials: [],
-
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMembers,
+  ],
+  partials: [Partials.GuildMember, Partials.Channel],
   makeCache: Options.cacheWithLimits({
-    MessageManager: 0,
-    GuildMemberManager: 0,
-    PresenceManager: 0,
-    ReactionManager: 0,
-    ThreadManager: 0,
-    VoiceStateManager: 10,
+    VoiceStateManager: 50, // Limit the number of voice states cached (e.g., 50 voice states max)
   }),
-
-  sweepers: {
-    messages: {
-      interval: 300,
-      lifetime: 60,
-    },
-    users: {
-      interval: 300,
-      filter: () => () => true,
-    },
-    guildMembers: {
-      interval: 300,
-      filter: () => () => true,
-    },
-  },
 });
 
 client.once(Events.ClientReady, async () => {
@@ -52,12 +35,6 @@ client.once(Events.ClientReady, async () => {
   for (const [, guild] of client.guilds.cache) {
     await setupCategory(guild);
   }
-
-  // Monitor memory usage
-  setInterval(() => {
-    const used = process.memoryUsage().rss / 1024 / 1024;
-    console.log(`🧠 Memory usage: ${used.toFixed(2)} MB`);
-  }, 10_000);
 });
 
 client.on(Events.GuildCreate, async (guild: Guild) => {
@@ -70,8 +47,7 @@ client.on(
     const guild = newState.guild;
     const category = guild.channels.cache.find(
       (c) => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
-    ) as CategoryChannel | undefined;
-
+    );
     if (!category) return;
 
     const createChannel = guild.channels.cache.find(
@@ -80,10 +56,9 @@ client.on(
         c.name === CREATE_CHANNEL_NAME &&
         c.type === ChannelType.GuildVoice
     ) as VoiceChannel | undefined;
-
     if (!createChannel) return;
 
-    // User joins the create channel
+    // Handle user joining ➕┃Create room
     if (
       newState.channelId === createChannel.id &&
       oldState.channelId !== createChannel.id
@@ -96,7 +71,7 @@ client.on(
             c.name.startsWith(ROOM_PREFIX) &&
             c.id !== createChannel.id
         )
-        .sort((a, b) => a.position - b.position); // Use `.position` instead of `.rawPosition`
+        .sort((a, b) => a.rawPosition - b.rawPosition);
 
       const roomNumber = existingRooms.size + 1;
       const newRoom = await guild.channels.create({
@@ -105,12 +80,13 @@ client.on(
         parent: category.id,
       });
 
+      // Move users from the "create channel" to the new room
       for (const [, member] of createChannel.members) {
         await member.voice.setChannel(newRoom).catch(console.error);
       }
     }
 
-    // Delete empty rooms
+    // Delete empty rooms (not the create room)
     const justLeft = oldState.channel;
     if (
       justLeft &&
@@ -126,42 +102,30 @@ client.on(
 async function setupCategory(guild: Guild): Promise<void> {
   const existingCategory = guild.channels.cache.find(
     (c) => c.type === ChannelType.GuildCategory && c.name === CATEGORY_NAME
-  ) as CategoryChannel | undefined;
+  );
 
   if (existingCategory) {
-    const existingPosition = existingCategory.position;
-
     const children = guild.channels.cache.filter(
       (c) => c.parentId === existingCategory.id
     );
+    // Delete all children in the existing category (rooms + create channel)
     for (const [, child] of children) {
       await child.delete().catch(console.error);
     }
     await existingCategory.delete().catch(console.error);
-
-    const newCategory = await guild.channels.create({
-      name: CATEGORY_NAME,
-      type: ChannelType.GuildCategory,
-      position: existingPosition,
-    });
-
-    await guild.channels.create({
-      name: CREATE_CHANNEL_NAME,
-      type: ChannelType.GuildVoice,
-      parent: newCategory.id,
-    });
-  } else {
-    const newCategory = await guild.channels.create({
-      name: CATEGORY_NAME,
-      type: ChannelType.GuildCategory,
-    });
-
-    await guild.channels.create({
-      name: CREATE_CHANNEL_NAME,
-      type: ChannelType.GuildVoice,
-      parent: newCategory.id,
-    });
   }
+
+  // Create the category and the "create channel"
+  const newCategory = await guild.channels.create({
+    name: CATEGORY_NAME,
+    type: ChannelType.GuildCategory,
+  });
+
+  await guild.channels.create({
+    name: CREATE_CHANNEL_NAME,
+    type: ChannelType.GuildVoice,
+    parent: newCategory.id,
+  });
 }
 
 client.login(process.env.DISCORD_TOKEN);
