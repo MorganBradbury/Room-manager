@@ -5,7 +5,7 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.GuildMember],
+  partials: [],
 });
 
 (async () => {
