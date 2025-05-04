@@ -1,15 +1,20 @@
-import { Client, GatewayIntentBits, Partials, Options } from "discord.js";
-import dotenv from "dotenv";
-
-dotenv.config();
-
+import { Client, GatewayIntentBits, Partials } from "discord.js";
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMembers,
   ],
-  partials: [Partials.Channel],
+  partials: [Partials.GuildMember, Partials.Channel],
 });
 
-client.login(process.env.DISCORD_TOKEN);
+(async () => {
+  try {
+    await client.login(process.env.DISCORD_BOT_TOKEN!);
+    console.log("✅ Room manager connected");
+  } catch (error) {
+    console.error("Error logging in to Discord:", error);
+  }
+})();
+
+export default client;
