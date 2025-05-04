@@ -35,11 +35,11 @@ async function setupCategory(guild: Guild): Promise<void> {
 client.once(Events.ClientReady, async () => {
   console.log("✅ Client ready — setting up categories...");
   for (const [, guild] of client.guilds.cache) {
-    await setupCategory(guild);
+    //await setupCategory(guild);
   }
 });
 
 // Register on new guild join
 client.on(Events.GuildCreate, async (guild: Guild) => {
-  await setupCategory(guild);
+  //await setupCategory(guild);
 });
