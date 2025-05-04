@@ -5,7 +5,8 @@ import {
   CategoryChannel,
 } from "discord.js";
 
-const CATEGORY_NAME = "🔊 Voice rooms";
+// const CATEGORY_NAME = "🔊 Voice rooms";
+const CATEGORY_NAME = "Voice rooms";
 const CREATE_CHANNEL_NAME = "➕┃Create room";
 const ROOM_PREFIX = "🔊┃Room #";
 
